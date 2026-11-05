@@ -1,0 +1,8 @@
+[package]
+name = "eng"
+version = "0.1.0"
+edition = "2021"
+description = "Carousel English study cards from a local folder"
+
+[dependencies]
+encoding_rs = "0.8"

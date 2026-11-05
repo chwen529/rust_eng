@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f3ecdf" />
+    <title>英文</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f3ecdf;
+        --paper-2: #e7dfd2;
+        --card: #fffdf9;
+        --ink: #2a2118;
+        --muted: #5e564c;
+        --line: #e3d9cb;
+        --leather: #2c211b;
+        --cream: #f6f0e6;
+        --shadow: 0 10px 28px rgba(52, 38, 31, 0.08);
+        --gold: #f0c27a;
+        font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "Segoe UI", sans-serif;
+      }
+      * { box-sizing: border-box; }
+      [hidden] { display: none !important; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+      }
+      button, input, select { font: inherit; color: inherit; touch-action: manipulation; }
+      button { cursor: pointer; }
+      button:disabled { cursor: default; opacity: 0.38; }
+      :focus-visible { outline: 2px solid #c4532a; outline-offset: 2px; }
+      .app {
+        width: min(430px, 100%);
+        height: 100dvh;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        overflow: hidden;
+        background:
+          radial-gradient(900px 280px at 50% -80px, rgba(255, 255, 255, 0.7), transparent 60%),
+          var(--paper);
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding:
+          calc(10px + env(safe-area-inset-top))
+          max(16px, env(safe-area-inset-right))
+          6px
+          max(16px, env(safe-area-inset-left));
+      }
+      .brand { margin: 0; font-size: 22px; letter-spacing: 0.04em; }
+      .ghost {
+        min-height: 44px;
+        max-width: 58%;
+        padding: 0 4px 0 12px;
+        border: 0;
+        background: transparent;
+        font-weight: 700;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .main {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: safe center;
+        padding:
+          4px
+          max(16px, env(safe-area-inset-right))
+          16px
+          max(16px, env(safe-area-inset-left));
+      }
+      .hero {
+        color: var(--cream);
+        background:
+          radial-gradient(80% 90% at 100% 0%, rgba(224, 154, 85, 0.35), transparent 52%),
+          linear-gradient(165deg, #4a372c, #2c211b 60%, #241910);
+        border-radius: 28px;
+        padding: 18px 18px 16px;
+      }
+      .hero-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      .hero-label, .count { margin: 0; font-size: 14px; letter-spacing: 0.08em; opacity: 0.78; }
+      .count { font-variant-numeric: tabular-nums; }
+      .syllables {
+        margin: 18px 0 0;
+        color: var(--gold);
+        font-size: 18px;
+        letter-spacing: 0.08em;
+        line-height: 1.4;
+      }
+      .word {
+        margin: 8px 0 0;
+        font-size: clamp(32px, 8vw, 48px);
+        font-weight: 760;
+        letter-spacing: -0.03em;
+        line-height: 1.15;
+        overflow-wrap: anywhere;
+      }
+      .word.is-speaking { color: var(--gold); }
+      .speak-hint { margin: 10px 0 0; color: rgba(246, 240, 230, 0.78); font-size: 15px; }
+      .track { height: 4px; margin-top: 16px; border-radius: 99px; background: rgba(255, 255, 255, 0.18); overflow: hidden; }
+      .track span { display: block; height: 100%; width: 0; background: var(--gold); }
+      .card {
+        background: var(--card);
+        border-radius: 22px;
+        padding: 16px;
+        margin-top: 12px;
+        box-shadow: var(--shadow);
+      }
+      .meaning { margin: 0; font-size: 22px; font-weight: 760; line-height: 1.5; white-space: pre-wrap; }
+      .meaning.is-empty { color: var(--muted); font-size: 16px; font-weight: 700; }
+      .note { margin: 10px 0 0; color: var(--muted); font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
+      .source { margin: 12px 0 0; color: var(--muted); font-size: 12px; font-weight: 700; }
+      .banner {
+        margin-bottom: 8px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: #fff4e8;
+        color: #7a3e12;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+      .dock {
+        padding:
+          10px
+          max(16px, env(safe-area-inset-right))
+          calc(12px + env(safe-area-inset-bottom))
+          max(16px, env(safe-area-inset-left));
+      }
+      .row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+      .secondary {
+        width: 100%;
+        min-height: 48px;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        background: var(--card);
+        font-weight: 760;
+      }
+      .primary {
+        width: 100%;
+        min-height: 52px;
+        border: 0;
+        border-radius: 16px;
+        background: var(--leather);
+        color: var(--cream);
+        font-size: 17px;
+        font-weight: 760;
+      }
+      .primary:active { transform: scale(0.99); }
+      .keys { margin: 8px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
+      .overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        background: rgba(28, 21, 16, 0.46);
+        display: flex;
+        align-items: flex-end;
+      }
+      .sheet {
+        width: 100%;
+        max-height: 100%;
+        overflow: auto;
+        background: var(--paper);
+        border-radius: 24px 24px 0 0;
+        padding:
+          6px
+          max(16px, env(safe-area-inset-right))
+          calc(16px + env(safe-area-inset-bottom))
+          max(16px, env(safe-area-inset-left));
+        box-shadow: 0 -10px 30px rgba(28, 21, 16, 0.16);
+      }
+      .grabber { width: 40px; height: 4px; margin: 6px auto 8px; border-radius: 99px; background: #ddcfc0; }
+      .sheet-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 8px;
+      }
+      .sheet-head h2 { margin: 0; font-size: 18px; }
+      .field { display: grid; gap: 6px; margin-top: 12px; }
+      .field span, .check { color: var(--muted); font-size: 13px; font-weight: 760; letter-spacing: 0.04em; }
+      .field select, .field input[type="range"] { width: 100%; }
+      .field select {
+        height: 48px;
+        border: 1px solid var(--line);
+        background: var(--card);
+        border-radius: 14px;
+        padding: 0 12px;
+      }
+      .check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 14px;
+        letter-spacing: 0;
+        font-size: 16px;
+        color: var(--ink);
+      }
+      .hint { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+      .sheet .secondary, .sheet .primary { margin-top: 12px; }
+      #toast {
+        position: fixed;
+        left: 50%;
+        bottom: 24px;
+        transform: translateX(-50%) translateY(12px);
+        max-width: min(360px, calc(100% - 32px));
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: var(--leather);
+        color: var(--cream);
+        font-size: 14px;
+        font-weight: 700;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+      }
+      #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    </style>
+  </head>
+  <body>
+    <div class="app" id="app">
+      <header class="topbar" id="topbar">
+        <h1 class="brand">英文</h1>
+        <button type="button" class="ghost" id="open-settings">教材</button>
+      </header>
+      <main class="main" id="main">
+        <p class="banner" id="banner" hidden></p>
+        <section class="hero">
+          <div class="hero-top">
+            <p class="hero-label" id="meta">讀取中</p>
+            <p class="count" id="count"></p>
+          </div>
+          <p class="syllables" id="syllables" hidden></p>
+          <h2 class="word" id="word">…</h2>
+          <p class="speak-hint" id="speak-hint" hidden></p>
+          <div class="track"><span id="fill"></span></div>
+        </section>
+        <section class="card">
+          <p class="meaning" id="meaning"></p>
+          <p class="note" id="note" hidden></p>
+          <p class="source" id="source"></p>
+        </section>
+      </main>
+      <div class="dock" id="dock">
+        <div class="row">
+          <button type="button" class="secondary" id="prev">上一張</button>
+          <button type="button" class="secondary" id="speak">發音</button>
+          <button type="button" class="secondary" id="next">下一張</button>
+        </div>
+        <button type="button" class="primary" id="play">開始輪播</button>
+        <p class="keys">← → 換頁　空白鍵輪播　S 再念一次</p>
+      </div>
+      <div class="overlay" id="overlay" hidden>
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+          <div class="grabber"></div>
+          <div class="sheet-head">
+            <h2 id="sheet-title">教材</h2>
+            <button type="button" class="ghost" id="close-settings">關閉</button>
+          </div>
+          <label class="field"><span>這一份</span>
+            <select id="deck"></select>
+          </label>
+          <label class="field"><span id="gap-label">念完後停留 1.5 秒</span>
+            <input id="gap" type="range" min="0" max="8" step="0.5" value="1.5" />
+          </label>
+          <label class="field"><span id="rate-label">語速 0.9</span>
+            <input id="rate" type="range" min="0.6" max="1.2" step="0.1" value="0.9" />
+          </label>
+          <label class="field"><span>語音</span>
+            <select id="voice"></select>
+          </label>
+          <label class="check"><input id="loop" type="checkbox" checked /> 念到最後從頭再來</label>
+          <label class="check"><input id="shuffle" type="checkbox" /> 隨機順序</label>
+          <p class="hint" id="dir-hint"></p>
+          <button type="button" class="secondary" id="reload">重新讀取教材</button>
+        </div>
+      </div>
+    </div>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <script>
+      const KEY = "eng.v1";
+      const saved = loadSaved();
+      const state = {
+        dir: "",
+        decks: [],
+        cards: [],
+        order: [],
+        deck: saved.deck || "daily.txt",
+        pos: Number.isInteger(saved.pos) ? saved.pos : 0,
+        gap: Number.isFinite(saved.gap) ? saved.gap : 1.5,
+        rate: Number.isFinite(saved.rate) ? saved.rate : 0.9,
+        loop: saved.loop !== false,
+        shuffle: saved.shuffle === true,
+        voice: saved.voice || "",
+      };
+      let playing = false;
+      let playToken = 0;
+      let timer = 0;
+      let voiceWarned = false;
+      let espeakReady = false;
+      let clip = null;
+
+      const deckSelect = document.querySelector("#deck");
+      const voiceSelect = document.querySelector("#voice");
+      const gapInput = document.querySelector("#gap");
+      const rateInput = document.querySelector("#rate");
+      const loopInput = document.querySelector("#loop");
+      const shuffleInput = document.querySelector("#shuffle");
+      const wordEl = document.querySelector("#word");
+
+      gapInput.value = String(state.gap);
+      rateInput.value = String(state.rate);
+      loopInput.checked = state.loop;
+      shuffleInput.checked = state.shuffle;
+      paintLabels();
+
+      document.querySelector("#open-settings").addEventListener("click", openSettings);
+      document.querySelector("#close-settings").addEventListener("click", closeSettings);
+      document.querySelector("#overlay").addEventListener("click", (event) => {
+        if (event.target.id === "overlay") closeSettings();
+      });
+      document.querySelector("#prev").addEventListener("click", () => go(-1));
+      document.querySelector("#next").addEventListener("click", () => go(1));
+      document.querySelector("#speak").addEventListener("click", () => speakCard(current()));
+      document.querySelector("#play").addEventListener("click", togglePlay);
+      document.querySelector("#reload").addEventListener("click", reloadDecks);
+      deckSelect.addEventListener("change", async () => {
+        state.deck = deckSelect.value;
+        state.pos = 0;
+        stop();
+        await loadCards();
+        reveal(false);
+      });
+      gapInput.addEventListener("input", () => {
+        state.gap = Number(gapInput.value);
+        paintLabels();
+        save();
+      });
+      rateInput.addEventListener("input", () => {
+        state.rate = Number(rateInput.value);
+        paintLabels();
+        save();
+      });
+      loopInput.addEventListener("change", () => {
+        state.loop = loopInput.checked;
+        save();
+      });
+      shuffleInput.addEventListener("change", async () => {
+        state.shuffle = shuffleInput.checked;
+        state.pos = 0;
+        orderCards();
+        save();
+        reveal(playing);
+      });
+      voiceSelect.addEventListener("change", () => {
+        state.voice = voiceSelect.value;
+        save();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.target.closest("input, select, textarea")) return;
+        if (event.key === "Escape") {
+          closeSettings();
+          return;
+        }
+        if (event.key === "ArrowRight") {
+          event.preventDefault();
+          go(1);
+        } else if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          go(-1);
+        } else if (event.key === " ") {
+          event.preventDefault();
+          togglePlay();
+        } else if (event.key === "s" || event.key === "S") {
+          event.preventDefault();
+          speakCard(current());
+        }
+      });
+      window.setInterval(() => {
+        if (window.speechSynthesis.speaking) window.speechSynthesis.resume();
+      }, 4000);
+      window.speechSynthesis.addEventListener("voiceschanged", fillVoices);
+      fillVoices();
+      boot();
+
+      async function boot() {
+        try {
+          const meta = await fetch("/api/decks").then((response) => response.json());
+          state.dir = meta.dir || "";
+          state.decks = meta.decks || [];
+          if (!state.decks.some((deck) => deck.name === state.deck) && state.deck !== "*") {
+            state.deck = state.decks.some((deck) => deck.name === "daily.txt") ? "daily.txt" : (state.decks[0]?.name || "*");
+          }
+          fillDecks();
+          document.querySelector("#dir-hint").textContent = state.dir
+            ? "單字讀自 " + state.dir + "。有英文系統語音時用系統語音，否則用 eSpeak。"
+            : "";
+          await probeSpeak();
+          await loadCards();
+          reveal(false);
+        } catch {
+          showBanner("教材讀取失敗。請確認程式還開著。");
+        }
+      }
+
+      async function loadCards() {
+        const response = await fetch("/api/cards?deck=" + encodeURIComponent(state.deck));
+        const data = await response.json();
+        state.cards = data.cards || [];
+        orderCards();
+        if (state.pos >= state.order.length) state.pos = 0;
+      }
+
+      function orderCards() {
+        state.order = state.cards.map((_, index) => index);
+        if (state.shuffle) {
+          for (let index = state.order.length - 1; index > 0; index -= 1) {
+            const swap = Math.floor(Math.random() * (index + 1));
+            const current = state.order[index];
+            state.order[index] = state.order[swap];
+            state.order[swap] = current;
+          }
+        }
+      }
+
+      function fillDecks() {
+        const total = state.decks.reduce((sum, deck) => sum + deck.count, 0);
+        const options = [{ name: "*", label: "全部（" + total + "）" }].concat(
+          state.decks.map((deck) => ({ name: deck.name, label: deck.name.replace(/\.txt$/i, "") + "（" + deck.count + "）" }))
+        );
+        deckSelect.innerHTML = options
+          .map((option) => `<option value="${escapeAttr(option.name)}">${escapeHtml(option.label)}</option>`)
+          .join("");
+        deckSelect.value = state.deck;
+      }
+
+      function fillVoices() {
+        const voices = window.speechSynthesis.getVoices().filter((voice) => voice.lang.toLowerCase().startsWith("en"));
+        const current = state.voice;
+        voiceSelect.innerHTML = `<option value="">自動</option><option value="espeak">eSpeak 英文</option>` + voices
+          .map((voice) => `<option value="${escapeAttr(voice.voiceURI)}">${escapeHtml(voice.name)}</option>`)
+          .join("");
+        if (current === "espeak" || voices.some((voice) => voice.voiceURI === current)) voiceSelect.value = current;
+      }
+
+      function current() {
+        const index = state.order[state.pos];
+        return state.cards[index] || null;
+      }
+
+      function reveal(speak) {
+        paint(current());
+        save();
+        if (speak) speakCard(current());
+      }
+
+      function paint(card) {
+        const count = state.order.length;
+        const deckName = state.deck === "*" ? "全部" : state.deck.replace(/\.txt$/i, "");
+        document.querySelector("#open-settings").textContent = deckName || "教材";
+        document.querySelector("#play").textContent = playing ? "暫停輪播" : "開始輪播";
+        document.querySelector("#play").setAttribute("aria-pressed", String(playing));
+        document.querySelector("#fill").style.width = count ? ((state.pos + 1) / count) * 100 + "%" : "0";
+        if (!card) {
+          document.querySelector("#meta").textContent = "沒有單字";
+          document.querySelector("#count").textContent = "";
+          document.querySelector("#syllables").hidden = true;
+          document.querySelector("#speak-hint").hidden = true;
+          wordEl.textContent = "這一份是空的";
+          setText("#meaning", "換一份教材，或把文字檔放到資料夾後重新讀取。", true);
+          document.querySelector("#note").hidden = true;
+          document.querySelector("#source").textContent = "";
+          return;
+        }
+        const bits = [];
+        if (state.deck === "*") bits.push(card.source.replace(/\.txt$/i, ""));
+        if (card.section) bits.push(card.section);
+        document.querySelector("#meta").textContent = bits.join(" · ") || deckName;
+        document.querySelector("#count").textContent = (state.pos + 1) + " / " + count;
+        const syllables = document.querySelector("#syllables");
+        syllables.hidden = !card.syllables;
+        syllables.textContent = card.syllables || "";
+        wordEl.textContent = card.english;
+        const hint = document.querySelector("#speak-hint");
+        const showHint = card.hint && card.hint !== card.syllables;
+        hint.hidden = !showHint;
+        hint.textContent = showHint ? card.hint : "";
+        setText("#meaning", card.meaning || "（這張沒有中文）", !card.meaning);
+        const note = document.querySelector("#note");
+        note.hidden = !card.note;
+        note.textContent = card.note || "";
+        document.querySelector("#source").textContent = card.source;
+      }
+
+      function setText(selector, text, empty) {
+        const element = document.querySelector(selector);
+        element.textContent = text;
+        element.classList.toggle("is-empty", empty);
+      }
+
+      function go(delta) {
+        if (!state.order.length) return;
+        advance(delta);
+        reveal(true);
+      }
+
+      function advance(delta) {
+        if (!state.order.length) return;
+        let next = state.pos + delta;
+        if (next >= state.order.length) {
+          if (!state.loop) {
+            playing = false;
+            state.pos = state.order.length - 1;
+            toast("這份念完了");
+            return;
+          }
+          next = 0;
+          if (state.shuffle) orderCards();
+        } else if (next < 0) {
+          next = state.loop ? state.order.length - 1 : 0;
+        }
+        state.pos = next;
+      }
+
+      function togglePlay() {
+        if (!state.order.length) return;
+        playing = !playing;
+        if (playing) reveal(true);
+        else stopSpeech();
+        paint(current());
+      }
+
+      function stop() {
+        playing = false;
+        stopSpeech();
+      }
+
+      async function probeSpeak() {
+        try {
+          const response = await fetch("/api/speak?text=ok&speed=120");
+          espeakReady = response.ok;
+        } catch {
+          espeakReady = false;
+        }
+      }
+
+      function stopSpeech() {
+        playToken += 1;
+        window.clearTimeout(timer);
+        window.speechSynthesis.cancel();
+        stopAudio();
+        wordEl.classList.remove("is-speaking");
+      }
+
+      function stopAudio() {
+        if (!clip) return;
+        clip.onended = null;
+        clip.onerror = null;
+        clip.pause();
+        clip.removeAttribute("src");
+        clip.load();
+        clip = null;
+      }
+
+      function speakCard(card) {
+        if (!card) return;
+        const token = ++playToken;
+        window.clearTimeout(timer);
+        window.speechSynthesis.cancel();
+        stopAudio();
+        const english = pickEnglishVoice();
+        const forcedBrowser = state.voice && state.voice !== "espeak";
+        if (!forcedBrowser && (state.voice === "espeak" || !english) && espeakReady) {
+          speakFile(card, token);
+          return;
+        }
+        speakSynth(card, token, forcedBrowser ? findVoice(state.voice) : english);
+      }
+
+      function speakFile(card, token) {
+        const speed = Math.max(80, Math.min(220, Math.round(150 * state.rate)));
+        const audio = new Audio("/api/speak?text=" + encodeURIComponent(card.english) + "&speed=" + speed);
+        clip = audio;
+        let settled = false;
+        const finish = () => {
+          if (settled || token !== playToken) return;
+          settled = true;
+          afterSpeak(token);
+        };
+        const fallback = () => {
+          if (settled || token !== playToken) return;
+          settled = true;
+          speakSynth(card, token, pickEnglishVoice());
+        };
+        audio.onplaying = () => {
+          if (token === playToken) wordEl.classList.add("is-speaking");
+        };
+        audio.onended = finish;
+        audio.onerror = fallback;
+        audio.play().catch(fallback);
+      }
+
+      function speakSynth(card, token, voice) {
+        const utter = new SpeechSynthesisUtterance(card.english);
+        utter.lang = "en-US";
+        utter.rate = state.rate;
+        if (voice) utter.voice = voice;
+        else if (!voiceWarned) {
+          voiceWarned = true;
+          toast("還沒有英文語音，仍會換頁");
+        }
+        let settled = false;
+        const finish = () => {
+          if (settled || token !== playToken) return;
+          settled = true;
+          afterSpeak(token);
+        };
+        utter.onstart = () => {
+          if (token === playToken) wordEl.classList.add("is-speaking");
+        };
+        utter.onend = finish;
+        utter.onerror = finish;
+        window.setTimeout(() => {
+          if (token === playToken) window.speechSynthesis.speak(utter);
+        }, 40);
+      }
+
+      function afterSpeak(token) {
+        wordEl.classList.remove("is-speaking");
+        if (token !== playToken || !playing) return;
+        timer = window.setTimeout(() => {
+          if (token !== playToken || !playing) return;
+          const atEnd = state.pos >= state.order.length - 1 && !state.loop;
+          advance(1);
+          paint(current());
+          save();
+          if (atEnd || !playing) return;
+          speakCard(current());
+        }, state.gap * 1000);
+      }
+
+      function pickEnglishVoice() {
+        const voices = window.speechSynthesis.getVoices().filter((voice) => voice.lang.toLowerCase().startsWith("en"));
+        if (state.voice && state.voice !== "espeak") {
+          return findVoice(state.voice);
+        }
+        return voices.find((voice) => /aria|jenny|guy|zira|samantha|google us english/i.test(voice.name)) || voices[0] || null;
+      }
+
+      function findVoice(uri) {
+        return window.speechSynthesis.getVoices().find((voice) => voice.voiceURI === uri) || null;
+      }
+
+      function openSettings() {
+        document.querySelector("#overlay").hidden = false;
+        document.querySelector("#main").inert = true;
+        document.querySelector("#topbar").inert = true;
+        document.querySelector("#dock").inert = true;
+        fillVoices();
+      }
+
+      function closeSettings() {
+        document.querySelector("#overlay").hidden = true;
+        document.querySelector("#main").inert = false;
+        document.querySelector("#topbar").inert = false;
+        document.querySelector("#dock").inert = false;
+      }
+
+      async function reloadDecks() {
+        stop();
+        const response = await fetch("/api/reload");
+        if (!response.ok) {
+          toast("重新讀取失敗");
+          return;
+        }
+        toast("已重新讀取");
+        await boot();
+      }
+
+      function paintLabels() {
+        document.querySelector("#gap-label").textContent = "念完後停留 " + Number(state.gap).toFixed(1) + " 秒";
+        document.querySelector("#rate-label").textContent = "語速 " + Number(state.rate).toFixed(1);
+      }
+
+      function showBanner(message) {
+        const banner = document.querySelector("#banner");
+        banner.hidden = false;
+        banner.textContent = message;
+      }
+
+      function toast(message) {
+        const element = document.querySelector("#toast");
+        element.textContent = message;
+        element.classList.add("show");
+        window.clearTimeout(toast.timer);
+        toast.timer = window.setTimeout(() => element.classList.remove("show"), 2200);
+      }
+
+      function save() {
+        localStorage.setItem(KEY, JSON.stringify({
+          deck: state.deck,
+          pos: state.pos,
+          gap: state.gap,
+          rate: state.rate,
+          loop: state.loop,
+          shuffle: state.shuffle,
+          voice: state.voice,
+        }));
+      }
+
+      function loadSaved() {
+        try {
+          return JSON.parse(localStorage.getItem(KEY) || "{}");
+        } catch {
+          return {};
+        }
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+      }
+
+      function escapeAttr(value) {
+        return escapeHtml(value);
+      }
+    </script>
+  </body>
+</html>
