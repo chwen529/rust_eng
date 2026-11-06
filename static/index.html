@@ -4,7 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#f3ecdf" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="英文" />
     <title>英文</title>
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="icon" href="./icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
     <style>
       :root {
         color-scheme: light;
@@ -129,6 +136,13 @@
         color: #7a3e12;
         font-size: 14px;
         line-height: 1.45;
+      }
+      a.banner-link {
+        display: block;
+        color: inherit;
+        font-weight: 760;
+        text-align: center;
+        text-decoration: none;
       }
       .dock {
         padding:
@@ -302,6 +316,7 @@
         loop: saved.loop !== false,
         shuffle: saved.shuffle === true,
         voice: saved.voice || "",
+        pack: null,
       };
       let playing = false;
       let playToken = 0;
@@ -394,31 +409,61 @@
       boot();
 
       async function boot() {
+        let remote = false;
         try {
-          const meta = await fetch("/api/decks").then((response) => response.json());
-          state.dir = meta.dir || "";
-          state.decks = meta.decks || [];
-          if (!state.decks.some((deck) => deck.name === state.deck) && state.deck !== "*") {
-            state.deck = state.decks.some((deck) => deck.name === "daily.txt") ? "daily.txt" : (state.decks[0]?.name || "*");
+          const response = await fetch("/api/decks");
+          if (response.ok) {
+            const meta = await response.json();
+            state.dir = meta.dir || "";
+            state.decks = meta.decks || [];
+            state.pack = null;
+            remote = true;
           }
-          fillDecks();
-          document.querySelector("#dir-hint").textContent = state.dir
-            ? "單字讀自 " + state.dir + "。有英文系統語音時用系統語音，否則用 eSpeak。"
-            : "";
-          await probeSpeak();
-          await loadCards();
-          reveal(false);
         } catch {
-          showBanner("教材讀取失敗。請確認程式還開著。");
+          remote = false;
         }
+        if (!remote) {
+          const pack = await fetch("./cards.json").then((response) => response.json());
+          state.pack = pack.decks || [];
+          state.decks = state.pack.map((deck) => ({ name: deck.name, count: deck.cards.length }));
+          state.dir = "";
+          const banner = document.querySelector("#banner");
+          banner.hidden = false;
+          banner.innerHTML = '<a class="banner-link" href="./install.html">加入主畫面後，手機就能自己輪播</a>';
+        }
+        if (!state.decks.some((deck) => deck.name === state.deck) && state.deck !== "*") {
+          state.deck = state.decks.some((deck) => deck.name === "daily.txt") ? "daily.txt" : (state.decks[0]?.name || "*");
+        }
+        fillDecks();
+        document.querySelector("#dir-hint").textContent = remote
+          ? "單字讀自 " + state.dir + "。有英文系統語音時用系統語音，否則用 eSpeak。"
+          : "進度只存在這台裝置。換手機前，網頁仍在，但輪到第幾張要重來。";
+        document.querySelector("#reload").hidden = !remote;
+        if (remote) await probeSpeak();
+        await loadCards();
+        reveal(false);
+        if (!remote) registerWorker();
       }
 
       async function loadCards() {
+        if (state.pack) {
+          state.cards = state.deck === "*"
+            ? state.pack.flatMap((deck) => deck.cards)
+            : (state.pack.find((deck) => deck.name === state.deck)?.cards || []);
+          orderCards();
+          if (state.pos >= state.order.length) state.pos = 0;
+          return;
+        }
         const response = await fetch("/api/cards?deck=" + encodeURIComponent(state.deck));
         const data = await response.json();
         state.cards = data.cards || [];
         orderCards();
         if (state.pos >= state.order.length) state.pos = 0;
+      }
+
+      function registerWorker() {
+        if (!("serviceWorker" in navigator) || location.hostname === "localhost" || location.hostname === "127.0.0.1") return;
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
       }
 
       function orderCards() {

@@ -19,6 +19,7 @@ fn main() {
     let mut dir = PathBuf::from(r"D:\eng");
     let mut port = 8741u16;
     let mut open = true;
+    let mut export_to: Option<PathBuf> = None;
     let args: Vec<String> = env::args().skip(1).collect();
     let mut index = 0;
     while index < args.len() {
@@ -35,13 +36,19 @@ fn main() {
                     .unwrap_or(8741);
             }
             "--no-open" => open = false,
+            "--export" => {
+                index += 1;
+                export_to = Some(PathBuf::from(
+                    args.get(index).map(String::as_str).unwrap_or("docs"),
+                ));
+            }
             "--help" | "-h" => {
-                println!("用法: eng [--dir D:\\eng] [--port 8741] [--no-open]");
+                println!("用法: eng [--dir D:\\eng] [--port 8741] [--no-open] [--export docs]");
                 return;
             }
             other => {
                 eprintln!("不認識的參數：{other}");
-                eprintln!("用法: eng [--dir D:\\eng] [--port 8741] [--no-open]");
+                eprintln!("用法: eng [--dir D:\\eng] [--port 8741] [--no-open] [--export docs]");
                 std::process::exit(1);
             }
         }
@@ -60,6 +67,14 @@ fn main() {
         std::process::exit(1);
     }
     let total: usize = decks.iter().map(|deck| deck.cards.len()).sum();
+    if let Some(out) = export_to {
+        if let Err(error) = export_site(&out, &decks) {
+            eprintln!("寫不出網頁 {}：{error}", out.display());
+            std::process::exit(1);
+        }
+        println!("已寫出 {}（{total} 張）", out.display());
+        return;
+    }
     let app = Arc::new(App {
         dir,
         decks: Mutex::new(decks),
@@ -91,6 +106,42 @@ fn main() {
             let _ = handle(stream, &app);
         });
     }
+}
+
+fn export_site(out: &Path, decks: &[Deck]) -> std::io::Result<()> {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("static");
+    std::fs::create_dir_all(out.join("icons"))?;
+    std::fs::write(out.join("index.html"), INDEX)?;
+    std::fs::copy(root.join("install.html"), out.join("install.html"))?;
+    std::fs::copy(root.join("manifest.json"), out.join("manifest.json"))?;
+    std::fs::copy(root.join("sw.js"), out.join("sw.js"))?;
+    for name in ["icon-192.png", "icon-512.png", "apple-touch-icon.png"] {
+        std::fs::copy(root.join("icons").join(name), out.join("icons").join(name))?;
+    }
+    std::fs::write(out.join("cards.json"), pack_json(decks))?;
+    std::fs::write(out.join(".nojekyll"), "")?;
+    Ok(())
+}
+
+fn pack_json(decks: &[Deck]) -> String {
+    let mut out = String::from("{\"decks\":[");
+    for (index, deck) in decks.iter().enumerate() {
+        if index > 0 {
+            out.push(',');
+        }
+        out.push_str("{\"name\":");
+        out.push_str(&json_string(&deck.name));
+        out.push_str(",\"cards\":[");
+        for (card_index, card) in deck.cards.iter().enumerate() {
+            if card_index > 0 {
+                out.push(',');
+            }
+            push_card(&mut out, card);
+        }
+        out.push_str("]}");
+    }
+    out.push_str("]}");
+    out
 }
 
 fn bind_port(start: u16) -> Option<(TcpListener, u16)> {
