@@ -302,6 +302,10 @@
     </div>
     <div id="toast" role="status" aria-live="polite"></div>
     <script>
+      // 這個網頁有兩種開法，畫面同一份：
+      // 1. 電腦執行 cargo run：boot() 打得到 /api/decks，單字和發音都問本機程式。
+      // 2. 手機或 GitHub Pages：沒有 /api，就改讀同目錄的 cards.json，發音用手機自己的語音。
+      // 進度存在這台裝置的 localStorage，鍵名是 eng.v1。換手機不會帶著走。
       const KEY = "eng.v1";
       const saved = loadSaved();
       const state = {
@@ -319,6 +323,8 @@
         pack: null,
       };
       let playing = false;
+      // 每叫一次發音就加一。舊的念完回呼如果號碼對不上，就不要再換頁，
+      // 避免「念完」和「念失敗」各觸發一次，一次輪播跳兩張。
       let playToken = 0;
       let timer = 0;
       let voiceWarned = false;
@@ -408,6 +414,7 @@
       fillVoices();
       boot();
 
+      // 先試本機 API。失敗代表現在是靜態網頁，改載入 cards.json。
       async function boot() {
         let remote = false;
         try {
@@ -461,6 +468,7 @@
         if (state.pos >= state.order.length) state.pos = 0;
       }
 
+      // 本機伺服器不註冊。靜態網站註冊後，第一次有網路就能把單字存進手機。
       function registerWorker() {
         if (!("serviceWorker" in navigator) || location.hostname === "localhost" || location.hostname === "127.0.0.1") return;
         navigator.serviceWorker.register("./sw.js").catch(() => {});
@@ -617,6 +625,9 @@
         clip = null;
       }
 
+      // 先念英文，再念中文意思。有指定瀏覽器語音就用它念英文。
+      // 否則沒有英文語音、或指定 eSpeak 時，本機伺服器改播 /api/speak 的 wav。
+      // 靜態網頁的 espeakReady 是 false，英文和中文都用手機自己的語音。
       function speakCard(card) {
         if (!card) return;
         const token = ++playToken;
@@ -629,57 +640,93 @@
           speakFile(card, token);
           return;
         }
-        speakSynth(card, token, forcedBrowser ? findVoice(state.voice) : english);
+        speakSynthFrom(card, token, forcedBrowser ? findVoice(state.voice) : english, 0);
+      }
+
+      // 中文意思。去掉結尾的詞性縮寫，例如「印象深刻的adj」只念「印象深刻的」。
+      function spokenMeaning(card) {
+        const text = String(card.meaning || "").replace(/\s*\n\s*/g, "，").replace(/\s+/g, " ").trim();
+        return text.replace(/\s*(?:adj|adv|prep|conj|pron|art|num|int|aux|vi|vt|pl|n|v|a)\.?$/i, "").trim();
       }
 
       function speakFile(card, token) {
         const speed = Math.max(80, Math.min(220, Math.round(150 * state.rate)));
-        const audio = new Audio("/api/speak?text=" + encodeURIComponent(card.english) + "&speed=" + speed);
-        clip = audio;
-        let settled = false;
-        const finish = () => {
-          if (settled || token !== playToken) return;
-          settled = true;
-          afterSpeak(token);
+        const parts = [{ text: card.english, voice: "en-us" }];
+        const meaning = spokenMeaning(card);
+        if (meaning) parts.push({ text: meaning, voice: "zh" });
+        let index = 0;
+        const playOne = () => {
+          if (token !== playToken) return;
+          if (index >= parts.length) {
+            afterSpeak(token);
+            return;
+          }
+          const part = parts[index];
+          index += 1;
+          const audio = new Audio("/api/speak?text=" + encodeURIComponent(part.text) + "&voice=" + part.voice + "&speed=" + speed);
+          clip = audio;
+          let settled = false;
+          const step = (ok) => {
+            if (settled || token !== playToken) return;
+            settled = true;
+            if (ok) playOne();
+            else speakSynthFrom(card, token, pickEnglishVoice(), index - 1);
+          };
+          audio.onplaying = () => {
+            if (token === playToken) wordEl.classList.add("is-speaking");
+          };
+          audio.onended = () => step(true);
+          audio.onerror = () => step(false);
+          audio.play().catch(() => step(false));
         };
-        const fallback = () => {
-          if (settled || token !== playToken) return;
-          settled = true;
-          speakSynth(card, token, pickEnglishVoice());
-        };
-        audio.onplaying = () => {
-          if (token === playToken) wordEl.classList.add("is-speaking");
-        };
-        audio.onended = finish;
-        audio.onerror = fallback;
-        audio.play().catch(fallback);
+        playOne();
       }
 
-      function speakSynth(card, token, voice) {
-        const utter = new SpeechSynthesisUtterance(card.english);
-        utter.lang = "en-US";
-        utter.rate = state.rate;
-        if (voice) utter.voice = voice;
-        else if (!voiceWarned) {
-          voiceWarned = true;
-          toast("還沒有英文語音，仍會換頁");
-        }
-        let settled = false;
-        const finish = () => {
-          if (settled || token !== playToken) return;
-          settled = true;
-          afterSpeak(token);
+      function speakSynthFrom(card, token, voice, start) {
+        const parts = [{ text: card.english, lang: "en-US", voice: voice, english: true }];
+        const meaning = spokenMeaning(card);
+        if (meaning) parts.push({ text: meaning, lang: "zh-TW", voice: pickChineseVoice(), english: false });
+        let index = start;
+        const next = () => {
+          if (token !== playToken) return;
+          if (index >= parts.length) {
+            afterSpeak(token);
+            return;
+          }
+          const part = parts[index];
+          index += 1;
+          const utter = new SpeechSynthesisUtterance(part.text);
+          utter.lang = part.lang;
+          utter.rate = state.rate;
+          if (part.voice) utter.voice = part.voice;
+          else if (part.english && !voiceWarned) {
+            voiceWarned = true;
+            toast("還沒有英文語音，仍會換頁");
+          }
+          let settled = false;
+          const step = () => {
+            if (settled || token !== playToken) return;
+            settled = true;
+            window.setTimeout(next, 80);
+          };
+          utter.onstart = () => {
+            if (token === playToken) wordEl.classList.add("is-speaking");
+          };
+          utter.onend = step;
+          utter.onerror = step;
+          window.speechSynthesis.speak(utter);
         };
-        utter.onstart = () => {
-          if (token === playToken) wordEl.classList.add("is-speaking");
-        };
-        utter.onend = finish;
-        utter.onerror = finish;
-        window.setTimeout(() => {
-          if (token === playToken) window.speechSynthesis.speak(utter);
-        }, 40);
+        window.setTimeout(next, 40);
       }
 
+      function pickChineseVoice() {
+        const voices = window.speechSynthesis.getVoices();
+        return voices.find((voice) => /^zh[-_]tw/i.test(voice.lang))
+          || voices.find((voice) => voice.lang.toLowerCase().startsWith("zh"))
+          || null;
+      }
+
+      // 輪播中：念完後先停 state.gap 秒，再換下一張並接著念。
       function afterSpeak(token) {
         wordEl.classList.remove("is-speaking");
         if (token !== playToken || !playing) return;

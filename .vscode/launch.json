@@ -1,0 +1,33 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "匯出 docs",
+      "cargo": {
+        "args": ["build", "--bin=eng", "--package=eng"],
+        "filter": {
+          "name": "eng",
+          "kind": "bin"
+        }
+      },
+      "args": ["--export", "docs", "--no-open"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "本機學習頁",
+      "cargo": {
+        "args": ["build", "--bin=eng", "--package=eng"],
+        "filter": {
+          "name": "eng",
+          "kind": "bin"
+        }
+      },
+      "args": ["--no-open"],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

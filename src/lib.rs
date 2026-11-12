@@ -1,29 +1,50 @@
+//! 把教材資料夾裡的 `.txt` 讀成一張張單字卡。
+//!
+//! 手機上的網頁不會執行這個檔案。電腦下
+//! `cargo run -- --export docs --no-open` 時，`main.rs` 會呼叫
+//! [`load_decks`]，再把結果寫成 `cards.json`。
+//!
+//! 一個 `.txt` 就是一份 [`Deck`]。檔名（例如 `daily.txt`）記在每張卡的
+//! `source`。只有文字檔會讀，履歷那種 `.doc` 會跳過。
+//! 檔案可以是 UTF-8，也可以是 Big5；開頭若有 UTF-8 的 BOM 會先拿掉。
+
 use std::fs;
 use std::path::Path;
 
+/// 畫面上的一張卡。空白欄位用空字串，不用「沒有值」。
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Card {
+    /// 要念出來的英文。片語中間的空白會保留，例如 `stick to`。
     pub english: String,
+    /// 拆開的音節，顯示在單字上方。沒有就留空。例如 `im pre ssive`。
     pub syllables: String,
+    /// 括號裡的讀音提示，例如 `趴里港`。跟音節相同時，網頁不另外顯示。
     pub hint: String,
+    /// 中文意思。同一張卡有多行中文時，用換行接在一起。
     pub meaning: String,
+    /// 補充。整行括號是註記；同一個空行區塊裡的其他英文會寫成「同組：…」。
     pub note: String,
+    /// 現在這個段落的標題，例如 `情緒` 或 `+ of`。
     pub section: String,
+    /// 這張卡來自哪一個檔名。
     pub source: String,
 }
 
+/// 一份教材。`name` 是檔名，含 `.txt`。
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Deck {
     pub name: String,
     pub cards: Vec<Card>,
 }
 
+/// 區塊裡讀到的英文，還沒跟中文拼成 [`Card`]。
 struct Piece {
     english: String,
     syllables: String,
     hint: String,
 }
 
+/// 讀資料夾裡每一個 `.txt`，依檔名排序。讀不到任何單字的檔案不會變成教材。
 pub fn load_decks(dir: &Path) -> std::io::Result<Vec<Deck>> {
     let mut files = Vec::new();
     for entry in fs::read_dir(dir)? {
@@ -53,6 +74,10 @@ pub fn load_decks(dir: &Path) -> std::io::Result<Vec<Deck>> {
     Ok(decks)
 }
 
+/// 把一份教材的全文變成卡片。
+///
+/// `prefix.txt` 這種用 Tab 縮排的字首樹，跟一般「空行分隔的單字」走不同的讀法。
+/// 超過一半的非空白行都以 Tab 開頭時，當成字首樹。
 pub fn parse_document(source: &str, text: &str) -> Vec<Card> {
     let text = text.trim_start_matches('\u{feff}');
     if is_prefix_tree(text) {
@@ -62,6 +87,7 @@ pub fn parse_document(source: &str, text: &str) -> Vec<Card> {
     }
 }
 
+/// UTF-8（可含 BOM）優先。不是合法 UTF-8 時，用 Big5 再解一次。
 pub fn decode_bytes(bytes: &[u8]) -> String {
     if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) {
         return String::from_utf8_lossy(&bytes[3..]).into_owned();
@@ -72,6 +98,9 @@ pub fn decode_bytes(bytes: &[u8]) -> String {
     }
 }
 
+/// 一般教材：空行或一排橫線結束一張卡。
+///
+/// 段落標題要逐行判斷。有些檔案在標題下一行立刻寫單字，中間沒有空行。
 fn parse_blocks(source: &str, text: &str) -> Vec<Card> {
     let mut section = String::new();
     let mut cards = Vec::new();
@@ -165,6 +194,8 @@ fn cards_from_block(source: &str, section: &str, lines: &[String]) -> Vec<Card> 
             notes.push(unwrap_note(line));
             continue;
         }
+        // 括號要先於「英文接中文」拆開。否則 `poly gon(趴里港)` 會把
+        // 左括號留在英文裡，音節就變成 `poly gon(`。
         let (_, hint) = split_paren(line);
         if !hint.is_empty() {
             if let Some(piece) = piece_from_english(line) {
@@ -203,7 +234,9 @@ fn cards_from_block(source: &str, section: &str, lines: &[String]) -> Vec<Card> 
         }
     }
 
+    // `im pre ssive` 下一行若是同一個字 `impressive`，上一行改當音節。
     merge_syllable_pair(&mut pieces);
+    // 區塊裡已經有真正的單字時，丟掉單獨一個字母，例如意思後面多出來的 `s`。
     if pieces.iter().any(|piece| piece.english.chars().count() > 1) {
         pieces.retain(|piece| piece.english.chars().count() > 1);
     }
@@ -369,6 +402,8 @@ fn is_prefix_tree(text: &str) -> bool {
     tabbed * 2 > lines.len()
 }
 
+/// 字首樹。有下一層縮排的那一行是分類，不是單字。
+/// 最末層用頓號或逗號切開，每個詞各成一張卡，意思寫成「字首 ab · abi」。
 fn parse_prefix(source: &str, text: &str) -> Vec<Card> {
     let lines: Vec<&str> = text
         .lines()

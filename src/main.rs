@@ -1,3 +1,16 @@
+//! 電腦上的進入點。手機打開的網頁不執行這個檔案。
+//!
+//! 兩種用法：
+//!
+//! - `cargo run -- --export docs --no-open`
+//!   讀教材，把網頁和 `cards.json` 寫到 `docs`，然後結束。
+//!   GitHub Pages 用的就是這份靜態檔。
+//! - `cargo run`
+//!   在這台電腦開 `http://127.0.0.1:8741`。網頁、重新讀教材、eSpeak 發音
+//!   都由這個程式提供。關掉視窗就停止。
+//!
+//! `D:\eng` 只在這台電腦有意義。手機讀的是事先寫好的 `cards.json`。
+
 use eng::{load_decks, Card, Deck};
 use std::env;
 use std::io::{Read, Write};
@@ -8,14 +21,17 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
+/// 網頁在編譯時就嵌進程式。改 `static/index.html` 後要重新 `cargo run` 才會生效。
 const INDEX: &str = include_str!("../static/index.html");
 
+/// 本機伺服器共用的教材。重新讀取時會換掉 `decks`，所以用鎖保護。
 struct App {
     dir: PathBuf,
     decks: Mutex<Vec<Deck>>,
 }
 
 fn main() {
+    // 預設讀這台電腦的 D:\eng。手機沒有這個路徑也沒關係，因為手機不跑 main。
     let mut dir = PathBuf::from(r"D:\eng");
     let mut port = 8741u16;
     let mut open = true;
@@ -66,7 +82,10 @@ fn main() {
         eprintln!("{} 裡沒有讀到單字。", dir.display());
         std::process::exit(1);
     }
+
+    // 計算所有教材加起來一共有幾張卡。
     let total: usize = decks.iter().map(|deck| deck.cards.len()).sum();
+    // 匯出跟開伺服器是二選一。匯出成功就結束，不會接著聽連接埠。
     if let Some(out) = export_to {
         if let Err(error) = export_site(&out, &decks) {
             eprintln!("寫不出網頁 {}：{error}", out.display());
@@ -108,10 +127,14 @@ fn main() {
     }
 }
 
+/// 寫出 GitHub Pages 用的靜態網站。
+///
+/// `index.html` 用的是編譯時嵌進來的那一份，不是執行當下再讀檔。
+/// `.nojekyll` 讓 GitHub 不要改寫底線開頭的檔名。
 fn export_site(out: &Path, decks: &[Deck]) -> std::io::Result<()> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("static");
     std::fs::create_dir_all(out.join("icons"))?;
-    std::fs::write(out.join("index.html"), INDEX)?;
+    std::fs::write(out.join("index.html"), INDEX)?; // 最一開始就有指定INDEX = static/index.html
     std::fs::copy(root.join("install.html"), out.join("install.html"))?;
     std::fs::copy(root.join("manifest.json"), out.join("manifest.json"))?;
     std::fs::copy(root.join("sw.js"), out.join("sw.js"))?;
@@ -191,6 +214,13 @@ fn handle(mut stream: TcpStream, app: &App) -> std::io::Result<()> {
     Ok(())
 }
 
+/// 本機伺服器的路徑。GitHub Pages 上沒有這些 `/api`，網頁會改讀 `cards.json`。
+///
+/// - `/` 學習頁
+/// - `/api/decks` 教材名稱和張數
+/// - `/api/cards?deck=` 某一份的卡片；`*` 是全部
+/// - `/api/speak?text=&speed=&voice=` 用 eSpeak 產生 wav。`voice=zh` 念中文
+/// - `/api/reload` 重新讀教材資料夾
 fn route(path: &str, app: &App) -> (String, &'static str, Vec<u8>) {
     let (route, query) = path.split_once('?').unwrap_or((path, ""));
     match route {
@@ -219,6 +249,7 @@ fn route(path: &str, app: &App) -> (String, &'static str, Vec<u8>) {
             query_value(query, "speed")
                 .and_then(|value| value.parse().ok())
                 .unwrap_or(140),
+            query_value(query, "voice").as_deref().unwrap_or("en-us"),
         ) {
             Ok(wav) => ("200 OK".to_string(), "audio/wav", wav),
             Err(error) => (
@@ -247,7 +278,10 @@ fn route(path: &str, app: &App) -> (String, &'static str, Vec<u8>) {
     }
 }
 
-fn speak_wav(text: &str, speed: u32) -> Result<Vec<u8>, String> {
+/// 叫 eSpeak NG 把一段話念成 wav。不彈出黑色命令視窗。
+/// `voice` 用 `zh` 時念中文，其他值都念美式英文。
+/// 速度大約 80 到 220，數字越大越快。
+fn speak_wav(text: &str, speed: u32, voice: &str) -> Result<Vec<u8>, String> {
     let text: String = text
         .chars()
         .filter(|ch| !ch.is_control())
@@ -259,8 +293,12 @@ fn speak_wav(text: &str, speed: u32) -> Result<Vec<u8>, String> {
     }
     let exe = espeak_exe().ok_or_else(|| "找不到 eSpeak".to_string())?;
     let speed = speed.clamp(80, 220).to_string();
+    let voice = match voice {
+        "zh" | "cmn" | "zh-tw" | "zh-cmn" => "zh",
+        _ => "en-us",
+    };
     let mut command = Command::new(exe);
-    command.args(["-v", "en-us", "-s", &speed, "--stdout", "--", text]);
+    command.args(["-v", voice, "-s", &speed, "--stdout", "--", text]);
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
