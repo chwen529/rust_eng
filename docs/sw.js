@@ -1,6 +1,6 @@
 // 靜態網站的離線副本。改過網頁或單字後，要把 CACHE 換成新名字，
 // 手機才會丟掉舊檔、改存新的。本機 127.0.0.1 不會註冊這支程式。
-const CACHE = "eng-shell-v2";
+const CACHE = "eng-shell-v3";
 const ASSETS = [
   "./",
   "./index.html",

@@ -643,10 +643,19 @@
         speakSynthFrom(card, token, forcedBrowser ? findVoice(state.voice) : english, 0);
       }
 
-      // 中文意思。去掉結尾的詞性縮寫，例如「印象深刻的adj」只念「印象深刻的」。
+      // 中文意思。斜線只是分隔不同講法，不念出來。結尾的詞性縮寫也不念，
+      // 例如「印象深刻的adj」只念「印象深刻的」。
       function spokenMeaning(card) {
-        const text = String(card.meaning || "").replace(/\s*\n\s*/g, "，").replace(/\s+/g, " ").trim();
-        return text.replace(/\s*(?:adj|adv|prep|conj|pron|art|num|int|aux|vi|vt|pl|n|v|a)\.?$/i, "").trim();
+        const text = String(card.meaning || "")
+          .replace(/[\\/／＼]+/g, "，")
+          .replace(/\s*\n\s*/g, "，")
+          .replace(/\s+/g, " ")
+          .replace(/，{2,}/g, "，")
+          .replace(/^，+|，+$/g, "")
+          .trim();
+        const cleaned = text.replace(/\s*(?:adj|adv|prep|conj|pron|art|num|int|aux|vi|vt|pl|n|v|a)\.?$/i, "").trim();
+        if (!/[\u3400-\u9fff]/.test(cleaned)) return "";
+        return cleaned;
       }
 
       function speakFile(card, token) {
